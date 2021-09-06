@@ -47,6 +47,10 @@ def configure_parser(sub_parsers):
                    action='store_true',
                    help='Strip symbols in the resulting wheel',
                    default=False)
+    p.add_argument('--exclude',
+                   dest='EXCLUDE',
+                   help='Exclude these libraries')
+
     p.set_defaults(func=execute)
 
 
@@ -92,7 +96,8 @@ def execute(args, p):
                              out_dir=args.WHEEL_DIR,
                              update_tags=args.UPDATE_TAGS,
                              patcher=patcher,
-                             strip=args.STRIP)
+                             strip=args.STRIP,
+                             exclude=(args.EXCLUDE or '').split(','))
 
     if out_wheel is not None:
         analyzed_tag = analyze_wheel_abi(out_wheel).overall_tag
