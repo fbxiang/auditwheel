@@ -50,6 +50,9 @@ def configure_parser(sub_parsers):
     p.add_argument('--exclude',
                    dest='EXCLUDE',
                    help='Exclude these libraries')
+    p.add_argument('--internal',
+                   dest='INTERNAL',
+                   help='These are internal libraries')
 
     p.set_defaults(func=execute)
 
@@ -97,7 +100,8 @@ def execute(args, p):
                              update_tags=args.UPDATE_TAGS,
                              patcher=patcher,
                              strip=args.STRIP,
-                             exclude=(args.EXCLUDE or '').split(','))
+                             exclude=(args.EXCLUDE or '').split(','),
+                             internal=(args.INTERNAL or '').split(','))
 
     if out_wheel is not None:
         analyzed_tag = analyze_wheel_abi(out_wheel).overall_tag

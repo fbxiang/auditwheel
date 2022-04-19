@@ -41,7 +41,8 @@ def _filter(items: Optional[List[str]]) -> List[str]:
 
 def repair_wheel(wheel_path: str, abi: str, lib_sdir: str, out_dir: str,
                  update_tags: bool, patcher: ElfPatcher,
-                 strip: bool = False, exclude: Optional[List[str]] = None) -> Optional[str]:
+                 strip: bool = False, exclude: Optional[List[str]] = None,
+                 internal: Optional[List[str]] = None) -> Optional[str]:
 
     external_refs_by_fn = get_wheel_elfdata(wheel_path)[1]
 
@@ -55,6 +56,7 @@ def repair_wheel(wheel_path: str, abi: str, lib_sdir: str, out_dir: str,
 
     wheel_fname = basename(wheel_path)
     exclude = _filter(exclude)
+    internal = _filter(internal)
 
     with InWheelCtx(wheel_path) as ctx:
         ctx.out_wheel = pjoin(out_dir, wheel_fname)
@@ -86,7 +88,7 @@ def repair_wheel(wheel_path: str, abi: str, lib_sdir: str, out_dir: str,
                                       'library "%s" could not be located') %
                                      soname)
 
-                new_soname, new_path = copylib(src_path, dest_dir, patcher)
+                new_soname, new_path = copylib(src_path, dest_dir, patcher, internal)
                 soname_map[soname] = (new_soname, new_path)
                 patcher.replace_needed(fn, soname, new_soname)
 
@@ -123,7 +125,7 @@ def strip_symbols(libraries):
         check_call(['strip', '-s', lib])
 
 
-def copylib(src_path, dest_dir, patcher):
+def copylib(src_path, dest_dir, patcher, internal):
     """Graft a shared library from the system into the wheel and update the
     relevant links.
 
@@ -141,7 +143,11 @@ def copylib(src_path, dest_dir, patcher):
 
     src_name = os.path.basename(src_path)
     base, ext = src_name.split('.', 1)
-    if not base.endswith('-%s' % shorthash):
+
+    if _is_in_list(src_name, internal):
+        logger.info("Internal library %s", src_name)
+        new_soname = src_name
+    elif not base.endswith('-%s' % shorthash):
         new_soname = f'{base}-{shorthash}.{ext}'
     else:
         new_soname = src_name
