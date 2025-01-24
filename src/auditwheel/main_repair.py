@@ -97,6 +97,13 @@ wheel will abort processing of subsequent wheels.
         default=[],
     )
     p.add_argument(
+        "--internal",
+        dest="INTERNAL",
+        help="These are internal libraries",
+        action="append",
+        default=[],
+    )
+    p.add_argument(
         "--only-plat",
         dest="ONLY_PLAT",
         action="store_true",
@@ -113,6 +120,7 @@ def execute(args, parser: argparse.ArgumentParser):
     from .wheel_abi import NonPlatformWheel, analyze_wheel_abi
 
     exclude = frozenset(args.EXCLUDE)
+    internal = frozenset(args.INTERNAL)
     wheel_policy = WheelPolicies()
 
     for wheel_file in args.WHEEL_FILE:
@@ -184,6 +192,7 @@ def execute(args, parser: argparse.ArgumentParser):
             update_tags=args.UPDATE_TAGS,
             patcher=patcher,
             exclude=exclude,
+            internal=internal,
             strip=args.STRIP,
         )
 
