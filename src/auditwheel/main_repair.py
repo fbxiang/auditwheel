@@ -113,6 +113,16 @@ wheel will abort processing of subsequent wheels.
         default=[],
     )
     parser.add_argument(
+        "--internal",
+        dest="INTERNAL",
+        help="Shared libraries whose filename contains one of these substrings "
+        "are part of the wheel itself: they are grafted like external ones but "
+        "keep their original sonames and filenames (no hash suffix). "
+        "(can be specified multiple times)",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
         "--only-plat",
         dest="ONLY_PLAT",
         action="store_true",
@@ -141,6 +151,7 @@ def execute(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     from auditwheel.wheel_abi import analyze_wheel_abi
 
     exclude: frozenset[str] = frozenset(args.EXCLUDE)
+    internal: frozenset[str] = frozenset(args.INTERNAL)
     wheel_dir: Path = args.WHEEL_DIR.absolute()
     wheel_files: list[Path] = args.WHEEL_FILE
 
@@ -285,6 +296,7 @@ def execute(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             out_dir=wheel_dir,
             update_tags=args.UPDATE_TAGS,
             patcher=patcher,
+            internal=internal,
             strip=args.STRIP,
             zip_compression_level=args.ZIP_COMPRESSION_LEVEL,
         )

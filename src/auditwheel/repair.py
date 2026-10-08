@@ -37,6 +37,7 @@ def repair_wheel(
     *,
     update_tags: bool,
     patcher: ElfPatcher,
+    internal: frozenset[str],
     strip: bool,
     zip_compression_level: int,
 ) -> Path | None:
@@ -96,7 +97,7 @@ def repair_wheel(
                 if not dest_dir.exists():
                     dest_dir.mkdir()
                 sbom_filepaths.append(src_path)
-                new_soname, new_path = copylib(src_path, dest_dir, patcher)
+                new_soname, new_path = copylib(src_path, dest_dir, patcher, internal)
                 soname_map[soname] = (new_soname, new_path)
                 replacements.append((soname, new_soname))
             if replacements:
@@ -161,12 +162,19 @@ def strip_symbols(libraries: Iterable[Path]) -> None:
         check_call(["strip", "-s", lib])
 
 
-def copylib(src_path: Path, dest_dir: Path, patcher: ElfPatcher) -> tuple[str, Path]:
+def copylib(
+    src_path: Path,
+    dest_dir: Path,
+    patcher: ElfPatcher,
+    internal: frozenset[str] = frozenset(),
+) -> tuple[str, Path]:
     """Graft a shared library from the system into the wheel and update the
     relevant links.
 
     1) Copy the file from src_path to dest_dir/
-    2) Rename the shared object from soname to soname.<unique>
+    2) Rename the shared object from soname to soname.<unique>, unless it
+       matches an --internal pattern: libraries shipped by the wheel itself
+       keep their original sonames and filenames.
     """
     # Copy the a shared library from the system (src_path) into the wheel
 
@@ -175,7 +183,11 @@ def copylib(src_path: Path, dest_dir: Path, patcher: ElfPatcher) -> tuple[str, P
 
     src_name = src_path.name
     base, ext = src_name.split(".", 1)
-    new_soname = f"{base}-{shorthash}.{ext}" if not base.endswith(f"-{shorthash}") else src_name
+    if any(item in src_name for item in internal):
+        logger.info("Grafting internal library %s (keeping original soname)", src_path)
+        new_soname = src_name
+    else:
+        new_soname = f"{base}-{shorthash}.{ext}" if not base.endswith(f"-{shorthash}") else src_name
 
     dest_path = dest_dir / new_soname
     if dest_path.exists():
